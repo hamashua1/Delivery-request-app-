@@ -178,8 +178,9 @@ export const logout = async (req: AuthRequest, res: Response): Promise<void> => 
   try {
     await UserModel.findByIdAndUpdate(req.userId, { refreshToken: null });
 
-    res.clearCookie('accessToken');
-    res.clearCookie('refreshToken', { path: '/api/auth/refresh' });
+    const isProduction = process.env.NODE_ENV === 'production';
+    res.clearCookie('accessToken', { httpOnly: true, secure: isProduction, sameSite: 'strict' });
+    res.clearCookie('refreshToken', { httpOnly: true, secure: isProduction, sameSite: 'strict', path: '/api/auth/refresh' });
 
     res.status(200).json({ message: 'Logged out successfully' });
   } catch (err) {

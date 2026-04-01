@@ -109,7 +109,7 @@ export const updateDeliveryStatus = async (req: AuthRequest, res: Response): Pro
       return;
     }
 
-    const allowed = ['in_progress', 'completed', 'cancelled'];
+    const allowed = ['completed', 'cancelled'];
     if (!status || !allowed.includes(status)) {
       res.status(400).json({ message: `Status must be one of: ${allowed.join(', ')}` });
       return;
@@ -118,6 +118,11 @@ export const updateDeliveryStatus = async (req: AuthRequest, res: Response): Pro
     const delivery = await DeliveryModel.findOne({ _id: id, riderId: req.userId as string });
     if (!delivery) {
       res.status(404).json({ message: 'Delivery not found or not assigned to you' });
+      return;
+    }
+
+    if (delivery.status !== 'in_progress') {
+      res.status(409).json({ message: 'Delivery must be in_progress before it can be completed or cancelled' });
       return;
     }
 

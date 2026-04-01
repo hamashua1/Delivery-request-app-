@@ -11,14 +11,12 @@ const server = http.createServer(app);
 const wss = new WebSocketServer({ server, path: '/ws' });
 
 wss.on('connection', (ws: WebSocket, req) => {
-  let token: string | null = null;
-  try {
-    const url = new URL(req.url ?? '', `http://localhost`);
-    token = url.searchParams.get('token');
-  } catch {
-    ws.close(1008, 'Invalid request URL');
-    return;
-  }
+  const cookieHeader = req.headers['cookie'] ?? '';
+  const token = cookieHeader
+    .split(';')
+    .map((c) => c.trim())
+    .find((c) => c.startsWith('accessToken='))
+    ?.split('=')[1] ?? null;
 
   if (!token) {
     ws.close(1008, 'Token required');

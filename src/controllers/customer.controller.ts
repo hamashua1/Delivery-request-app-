@@ -31,18 +31,19 @@ export const requestDelivery = async (req: AuthRequest, res: Response): Promise<
 
     const customerId = req.userId as string;
 
-    const delivery = await DeliveryModel.create({
-      customerId,
-      pickup,
-      dropoff,
-      price,
-      status: 'pending',
-    });
-
     const session = await mongoose.startSession();
     let assignedRiderId: string | null = null;
+    let deliveryId: mongoose.Types.ObjectId | null = null;
+
     try {
       await session.withTransaction(async () => {
+        const [delivery] = await DeliveryModel.create(
+          [{ customerId, pickup, dropoff, price, status: 'pending' }],
+          { session }
+        );
+        if (!delivery) return;
+        deliveryId = delivery._id as mongoose.Types.ObjectId;
+
         const riderId = await findNearestRider(pickup.coordinates as [number, number]);
         if (!riderId) return;
 
@@ -62,17 +63,22 @@ export const requestDelivery = async (req: AuthRequest, res: Response): Promise<
       session.endSession();
     }
 
+    if (!deliveryId) {
+      res.status(500).json({ message: 'Failed to create delivery request' });
+      return;
+    }
+
     if (assignedRiderId) {
       notifyDeliveryUpdate(assignedRiderId, {
         type: 'DELIVERY_ASSIGNED',
-        deliveryId: delivery._id,
+        deliveryId,
         pickup,
         dropoff,
         price,
       });
     }
 
-    const freshDelivery = await DeliveryModel.findById(delivery._id);
+    const freshDelivery = await DeliveryModel.findById(deliveryId);
     res.status(201).json({
       message: assignedRiderId ? 'Rider assigned' : 'Looking for a rider',
       delivery: freshDelivery,

@@ -15,5 +15,5 @@ export const findNearestRider = async (
     },
   });
 
-  return rider ? (rider.userId as unknown as string) : null;
+  return rider ? rider.userId.toString() : null;
 };
